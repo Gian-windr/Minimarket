@@ -10,7 +10,7 @@ description = 'Sistema de gestión de ventas e inventarios para un minimarket'
 
 java {
 	toolchain {
-		languageVersion = JavaLanguageVersion.of(17)
+		languageVersion = JavaLanguageVersion.of(21)
 	}
 }
 
