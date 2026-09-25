@@ -20,6 +20,10 @@ Ambos proyectos se ejecutan y despliegan por separado.
 - Spring Boot 3.5.7
 - Spring Data JPA
 - Spring Web
+- Spring Security + JWT (jjwt)
+- Bean Validation
+- Lombok
+- springdoc-openapi (Swagger UI)
 - Gradle
 
 **Base de datos**
@@ -72,6 +76,10 @@ cd minimarket
 
 El backend quedará disponible en `http://localhost:8080`.
 
+Al primer arranque se crean datos iniciales: roles `ADMINISTRADOR` y `CAJERO`, unidades de medida básicas y el usuario administrador **admin / admin123** (cambiar la password en producción).
+
+La documentación interactiva de la API está en `http://localhost:8080/swagger-ui.html` — autenticarse en `POST /api/auth/login` y usar el botón **Authorize** con el token JWT.
+
 ### Frontend
 
 ```bash
@@ -81,6 +89,27 @@ pnpm start
 ```
 
 > Ajusta la ruta anterior según dónde se ubique el proyecto de frontend dentro del repositorio.
+
+## API
+
+Todos los endpoints cuelgan de `/api` y requieren token JWT, salvo `/api/auth/login` y la documentación.
+
+| Grupo | Ruta base | Qué hace |
+|---|---|---|
+| Autenticación | `/api/auth` | Login y emisión de token |
+| Dashboard | `/api/dashboard` | Resumen del día, mes, alertas y caja |
+| Productos | `/api/productos` | CRUD, búsqueda por código de barras, stock bajo |
+| Catálogos | `/api/categorias`, `/api/tipos-producto`, `/api/unidades-medida` | Maestros del catálogo |
+| Inventario | `/api/inventario` | Kardex y ajustes manuales de stock |
+| Ventas | `/api/ventas` | Registro y anulación de ventas |
+| Comprobantes | `/api/comprobantes` | Emisión de boleta/factura y PDF |
+| Devoluciones | `/api/devoluciones` | Devoluciones con nota de crédito |
+| Caja | `/api/cajas` | Apertura, cierre y arqueo |
+| Compras | `/api/compras`, `/api/proveedores` | Ingreso de mercadería |
+| Clientes | `/api/clientes`, `/api/consultas` | Clientes y consulta DNI/RUC |
+| Promociones | `/api/promociones` | Descuentos por producto |
+| Reportes | `/api/reportes` | Ventas, top productos, clientes, stock |
+| Administración | `/api/usuarios`, `/api/roles`, `/api/empleados`, `/api/auditoria`, `/api/backups` | Solo rol ADMINISTRADOR |
 
 ## Estructura del proyecto
 
@@ -109,6 +138,23 @@ minimarket/
 ```bash
 ./gradlew test
 ```
+
+La suite tiene 34 pruebas y no requiere PostgreSQL: las pruebas de integración levantan la aplicación contra una base H2 en memoria (configurada en `src/test/resources/application.properties`).
+
+- **Pruebas unitarias** de la lógica de negocio: ventas e IGV, kardex de inventario, arqueo de caja, devoluciones, promociones y correlativos de comprobantes.
+- **Pruebas de integración**: flujo completo de venta contra base de datos, generación real del PDF, y circuito HTTP con Tomcat (login JWT, endpoints protegidos, Swagger público).
+
+## Solución de problemas
+
+**`java.io.IOException: Unable to establish loopback connection` al compilar o ejecutar**
+
+En esta máquina los sockets AF_UNIX están bloqueados (interferencia de antivirus/LSP de Winsock), lo que rompe `Selector.open()` del JDK 21 y con ello Gradle y Tomcat. Workaround — definir esta variable de entorno antes de compilar o ejecutar:
+
+```powershell
+$env:JDK_JAVA_OPTIONS = "-Djdk.net.unixdomain.tmpdir=C:/__uds_disabled__"
+```
+
+Apuntar a una ruta inexistente fuerza al JDK a usar TCP loopback en lugar de sockets Unix. Para hacerlo permanente, agregarla como variable de entorno de usuario en Windows. El fix definitivo es reparar Winsock (`netsh winsock reset` como administrador y reiniciar).
 
 ## Licencia
 
